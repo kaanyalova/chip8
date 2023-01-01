@@ -1,0 +1,4 @@
+/target
+*.md 
+*.ch8
+!roms/*

@@ -5,8 +5,6 @@
 
 use rand::random;
 
-pub struct chip8_plugin;
-
 pub struct Emulator {
     pub display_buffer: [[bool; 32]; 64], // first index is x, second is y
     pub key_inputs: [bool; 16],
@@ -17,7 +15,6 @@ pub struct Emulator {
     index_register: u16, // cpu pointer thing
     program_counter: u16,
     stack_pointer: u16,
-    //wait_for_key: bool, // not needed , we can check if the value of key_inst_buffer is zero or not instead
     pub wait_for_key: bool,
     pub draw: bool,
 }
@@ -65,11 +62,6 @@ impl Emulator {
                     mem[0x200 + offset] = byte.clone();
                 }
 
-                //println!("{:?}", mem);
-
-                //for m in mem {
-                //    println!("0x{:X},", m)
-                //}
                 mem
             },
             registers: [0; 16],
@@ -82,17 +74,6 @@ impl Emulator {
             draw: false,
         }
     }
-    /*
-        fn push(&mut self, input: u16) {
-            self.registers[self.index_register as usize] = input;
-            self.index_register += 1
-        }
-
-        fn pop(&mut self) -> u16 {
-            self.index_register -= 1;
-            self.registers[self.index_register as usize]
-        }
-    */
 
     pub fn timer_tick(&mut self) {
         if self.delay_timer > 0 {

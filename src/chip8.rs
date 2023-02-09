@@ -115,7 +115,7 @@ impl Emulator {
     ///    to combine 00010001, 11101110
     ///
     ///    Make space for
-    ///    00010001 => 00010001 00000000  (becasuse of <<= 8)
+    ///    00010001 => 00010001 00000000  (because of <<= 8)
     ///
     ///    00010001 00000000 | (00000000) 11101110 => 00010001 11101110
     fn fetch(&mut self) -> u16 {
@@ -134,7 +134,7 @@ impl Emulator {
     ///
     /// opcode =
     /// 00E0 => 0000 0000 1110 0000
-    /// comparasion =
+    /// comparison =
     /// 00F0 => 0000 0000 1111 0000
     ///  
     /// 0000 0000 1110 0000
@@ -307,7 +307,7 @@ impl Emulator {
     /// 8xy1
     ///
     /// Set Vx = Vx OR Vy.
-    /// Performs a bitwise OR on the values of Vx and Vy, then stores the result in Vx. A bitwise OR compares the corrseponding bits from two values, and if either bit is 1, then the same bit in the result is also 1. Otherwise, it is 0.
+    /// Performs a bitwise OR on the values of Vx and Vy, then stores the result in Vx. A bitwise OR compares the corresponding bits from two values, and if either bit is 1, then the same bit in the result is also 1. Otherwise, it is 0.
     fn inst_8xy1(&mut self, t2: u16, t3: u16) {
         self.registers[t2 as usize] = self.registers[t2 as usize] | self.registers[t3 as usize];
     }
@@ -315,7 +315,7 @@ impl Emulator {
     /// 8xy2
     ///
     /// Set Vx = Vx AND Vy.
-    /// Performs a bitwise AND on the values of Vx and Vy, then stores the result in Vx. A bitwise AND compares the corrseponding bits from two values, and if both bits are 1, then the same bit in the result is also 1. Otherwise, it is 0.
+    /// Performs a bitwise AND on the values of Vx and Vy, then stores the result in Vx. A bitwise AND compares the corresponding bits from two values, and if both bits are 1, then the same bit in the result is also 1. Otherwise, it is 0.
     fn inst_8xy2(&mut self, t2: u16, t3: u16) {
         self.registers[t2 as usize] = self.registers[t2 as usize] & self.registers[t3 as usize];
     }
@@ -323,7 +323,7 @@ impl Emulator {
     /// 8xy3
     ///
     ///  Set Vx = Vx XOR Vy
-    /// Performs a bitwise exclusive OR on the values of Vx and Vy, then stores the result in Vx. An exclusive OR compares the corrseponding bits from two values, and if the bits are not both the same, then the corresponding bit in the result is set to 1. Otherwise, it is 0.
+    /// Performs a bitwise exclusive OR on the values of Vx and Vy, then stores the result in Vx. An exclusive OR compares the corresponding bits from two values, and if the bits are not both the same, then the corresponding bit in the result is set to 1. Otherwise, it is 0.
     fn inst_8xy3(&mut self, t2: u16, t3: u16) {
         self.registers[t2 as usize] = self.registers[t2 as usize] ^ self.registers[t3 as usize];
     }
@@ -475,7 +475,7 @@ impl Emulator {
     /// If the sprite is positioned so part of it is outside the coordinates of the display, it wraps around to the opposite side of the screen. See instruction 8xy3 for more information on XOR, and section 2.4, Display, for more information on the Chip-8 screen and sprites.
     ///
     ///
-    /// The sprite themselfs don't actually wrap, only the starting cordinates (Vx, Vy) do
+    /// The sprite themselves don't actually wrap, only the starting coordinates (Vx, Vy) do
     ///
     ///
     /// so actual starting positions are:

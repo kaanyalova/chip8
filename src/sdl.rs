@@ -7,7 +7,7 @@ use std::collections::HashSet;
 
 use crate::chip8::Emulator;
 
-const SCREEN_SIZE_MULTIPLYER: u32 = 10;
+const SCREEN_SIZE_MULTIPLIER: u32 = 10;
 const EMULATOR_SPEED_MULTIPLIER: usize = 25;
 
 pub fn sdl_init(ch8: &mut Emulator) {
@@ -18,8 +18,8 @@ pub fn sdl_init(ch8: &mut Emulator) {
     let window = video_subsystem
         .window(
             "chip8",
-            64 * SCREEN_SIZE_MULTIPLYER,
-            32 * SCREEN_SIZE_MULTIPLYER,
+            64 * SCREEN_SIZE_MULTIPLIER,
+            32 * SCREEN_SIZE_MULTIPLIER,
         )
         .position_centered()
         .build()
@@ -91,10 +91,10 @@ pub fn sdl_init(ch8: &mut Emulator) {
                 if *pixel_state == true {
                     canvas
                         .fill_rect(Rect::new(
-                            (x_pos * SCREEN_SIZE_MULTIPLYER as usize) as i32,
-                            (y_pos * SCREEN_SIZE_MULTIPLYER as usize) as i32,
-                            SCREEN_SIZE_MULTIPLYER,
-                            SCREEN_SIZE_MULTIPLYER,
+                            (x_pos * SCREEN_SIZE_MULTIPLIER as usize) as i32,
+                            (y_pos * SCREEN_SIZE_MULTIPLIER as usize) as i32,
+                            SCREEN_SIZE_MULTIPLIER,
+                            SCREEN_SIZE_MULTIPLIER,
                         ))
                         .unwrap();
                 }

@@ -7,27 +7,20 @@ use std::collections::HashSet;
 
 use crate::chip8::Emulator;
 
-const SCREEN_SIZE_MULTIPLIER: u32 = 10;
-const EMULATOR_SPEED_MULTIPLIER: usize = 25;
-
-pub fn sdl_init(ch8: &mut Emulator) {
+pub fn sdl_init(ch8: &mut Emulator, speed: u32, screen_size: u32, framerate: u32) {
     let sdl_context = sdl2::init().unwrap();
 
     let video_subsystem = sdl_context.video().unwrap();
 
     let window = video_subsystem
-        .window(
-            "chip8",
-            64 * SCREEN_SIZE_MULTIPLIER,
-            32 * SCREEN_SIZE_MULTIPLIER,
-        )
+        .window("chip8", 64 * screen_size, 32 * screen_size)
         .position_centered()
         .build()
         .unwrap();
 
     let mut canvas = window.into_canvas().build().unwrap();
     let mut fps_manager = FPSManager::new();
-    fps_manager.set_framerate(60).unwrap();
+    fps_manager.set_framerate(framerate).unwrap();
 
     canvas.set_draw_color(Color::BLACK);
     canvas.clear();
@@ -76,10 +69,11 @@ pub fn sdl_init(ch8: &mut Emulator) {
             }
         }
 
-        canvas.set_draw_color(Color::BLACK);
-        canvas.clear();
-
-        for _ in 0..EMULATOR_SPEED_MULTIPLIER {
+        if ch8.draw {
+            canvas.set_draw_color(Color::BLACK);
+            canvas.clear();
+        }
+        for _ in 0..speed {
             ch8.tick();
         }
         ch8.timer_tick();
@@ -91,10 +85,10 @@ pub fn sdl_init(ch8: &mut Emulator) {
                 if *pixel_state == true {
                     canvas
                         .fill_rect(Rect::new(
-                            (x_pos * SCREEN_SIZE_MULTIPLIER as usize) as i32,
-                            (y_pos * SCREEN_SIZE_MULTIPLIER as usize) as i32,
-                            SCREEN_SIZE_MULTIPLIER,
-                            SCREEN_SIZE_MULTIPLIER,
+                            (x_pos * screen_size as usize) as i32,
+                            (y_pos * screen_size as usize) as i32,
+                            screen_size,
+                            screen_size,
                         ))
                         .unwrap();
                 }

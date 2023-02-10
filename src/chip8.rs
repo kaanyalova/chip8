@@ -129,7 +129,6 @@ impl Emulator {
     ///
 
     pub fn execute(&mut self, opcode: u16) {
-        println!("{:X}", opcode);
         let pieces = (
             (opcode & 0xF000) >> 12, // as u8 ?????
             (opcode & 0x0F00) >> 8,
@@ -489,18 +488,19 @@ impl Emulator {
         // iterate for each byte of sprite
         for sprite_byte_iter in 0..t4 {
             let sprite = self.memory[(self.index_register + sprite_byte_iter) as usize]; // sprite byte
-            let x_pos = self.registers[t2 as usize] % 64; // actual x position
-            let y_pos = (self.registers[t3 as usize] % 32) + sprite_byte_iter; // actual y position
+            let x_pos = self.registers[t2 as usize]; // actual x position
+            let y_pos = (self.registers[t3 as usize] + sprite_byte_iter) % 32; // actual y position
                                                                                // sprite_byte_iter added to get the y position of the spites to draw
                                                                                // second sprite needs to start at y+1 third needs to start at y+2 etc.
 
             // iterate over each bit of the sprite
-            // could & with 1000 0000 then << n to get bits insead...
+            // could & with 1000 0000 then << n to get bits instead...
             for bit_iter in 0..8 {
                 let bit = (sprite << bit_iter) & 0x80 != 0; // "!= 0" is same as "as bool"
-                self.display_buffer[((x_pos + bit_iter) as u16 % 64) as usize]  // %64 again 
-                    [y_pos as usize % 32] ^= bit; // xor the bits to display buffer
-                if bit {
+                let x_pos = (x_pos + bit_iter) % 64;
+                self.display_buffer[x_pos as usize]  // %64 again 
+                    [y_pos as usize] ^= bit; // xor the bits to display buffer
+                if bit != self.display_buffer[x_pos as usize][y_pos as usize] {
                     // bit "toggles" only if the bit is 1, so set the VF to 1
                     is_changed = true;
                 }

@@ -3,8 +3,8 @@
 #![allow(non_camel_case_types)]
 #![allow(non_snake_case)]
 
+use log::debug;
 use rand::random;
-
 pub struct Emulator {
     pub display_buffer: [[bool; 32]; 64], // first index is x, second is y
     pub key_inputs: [bool; 16],
@@ -47,15 +47,6 @@ impl Emulator {
             memory: {
                 let mut mem = [0; 4096];
 
-                /*
-                Does the same as
-
-                while i < 80:
-                # load 80-char font set
-                    self.memory[i] = self.fonts[i]
-                    i += 1
-
-                */
                 mem[..80].clone_from_slice(&Emulator::FONTS);
 
                 for (offset, byte) in rom.iter().enumerate() {
@@ -136,10 +127,11 @@ impl Emulator {
             (opcode & 0x000F),
         );
         match pieces {
+            (0x0, 0x0, 0x0, 0x0) => (),               // does nothing
             (0x0, 0x0, 0xE, 0x0) => self.inst_00E0(), //00E0
             (0x0, 0x0, 0xE, 0xE) => self.inst_00EE(), //00EE
-            (0x1, _, _, _) => self.inst_1nnn(pieces.1, pieces.2, pieces.3), //1nnn
-            (0x2, _, _, _) => self.inst_2nnn(pieces.1, pieces.2, pieces.3), //2nnn
+            (0x1, _, _, _) => self.inst_1nnn(opcode), //1nnn
+            (0x2, _, _, _) => self.inst_2nnn(opcode), //2nnn
             (0x3, _, _, _) => self.inst_3xkk(pieces.1, pieces.2, pieces.3), // 3xkk
             (0x4, _, _, _) => self.inst_4xkk(pieces.1, pieces.2, pieces.3), //4xkk
             (0x5, _, _, 0x0) => self.inst_5xy0(pieces.1, pieces.2), // 5xy0
@@ -176,6 +168,10 @@ impl Emulator {
                 opcode, self.program_counter
             ),
         };
+        debug!(
+            "opcode 0x{:X}, pc is at {}, index register is {}",
+            opcode, self.program_counter, self.index_register
+        );
     }
 }
 
@@ -196,28 +192,26 @@ impl Emulator {
     fn inst_00EE(&mut self) {
         self.program_counter = self.registers[self.stack_pointer as usize];
         self.stack_pointer -= 1;
+        debug!("{}", self.stack_pointer);
     }
 
     /// 1nnn
     ///
     /// Jump to location nnn.
     /// The interpreter sets the program counter to nnn.
-    fn inst_1nnn(&mut self, t2: u16, t3: u16, t4: u16) {
-        let mut bin = 0x000;
-        bin |= t2 << 8;
-        bin |= t3 << 4;
-        bin |= t4;
-        self.program_counter = bin as u16;
+    fn inst_1nnn(&mut self, op: u16) {
+        let nnn = op & 0xFFF;
+        self.program_counter = nnn as u16;
     }
 
     /// 2nnn
     ///
     /// Call subroutine at nnn.
     /// The interpreter increments the stack pointer, then puts the current PC on the top of the stack. The PC is then set to nnn.
-    fn inst_2nnn(&mut self, t2: u16, t3: u16, t4: u16) {
+    fn inst_2nnn(&mut self, op: u16) {
         self.stack_pointer += 1;
         self.registers[self.stack_pointer as usize] = self.program_counter;
-        self.inst_1nnn(t2, t3, t4);
+        self.inst_1nnn(op);
     }
 
     /// 3xkk
@@ -264,6 +258,8 @@ impl Emulator {
         let mut kk = t3 << 4;
         kk |= t4;
         self.registers[t2 as usize] = kk;
+
+        debug!("{},{}, {}", t3, t4, kk)
     }
 
     /// 7xkk
@@ -273,7 +269,7 @@ impl Emulator {
     fn inst_7xkk(&mut self, t2: u16, t3: u16, t4: u16) {
         let mut kk = t3 << 4;
         kk |= t4;
-        (self.registers[t2 as usize], _) = kk.overflowing_add(self.registers[t2 as usize]);
+        self.registers[t2 as usize] = kk.wrapping_add(self.registers[t2 as usize]);
     }
 
     /// 8xy0
@@ -418,11 +414,12 @@ impl Emulator {
     /// Set I = nnn.
     /// The value of register I is set to nnn.
     fn inst_Annn(&mut self, t2: u16, t3: u16, t4: u16) {
-        let mut bin = 0x000;
-        bin |= t2 << 8;
-        bin |= t3 << 4;
-        bin |= t4;
-        self.index_register = bin;
+        let mut nnn = 0x000;
+        nnn |= t2 << 8;
+        nnn |= t3 << 4;
+        nnn |= t4;
+        self.index_register = nnn;
+        debug!("{:X},{:X},{:X},{:X}", t2, t3, t4, nnn)
     }
 
     /// Bnnn
@@ -434,7 +431,7 @@ impl Emulator {
         bin |= t2 << 8;
         bin |= t3 << 4;
         bin |= t4;
-        self.program_counter = bin + self.registers[0x0]
+        self.program_counter = bin + self.registers[0]
     }
 
     /// Cxkk - RND Vx, byte
@@ -604,8 +601,17 @@ impl Emulator {
     fn inst_Fx33(&mut self, t2: u16) {
         let vx = self.registers[t2 as usize];
         self.memory[self.index_register as usize] = (vx / 100) as u8;
-        self.memory[(self.index_register + 1) as usize] = (vx % 100 / 10) as u8;
-        self.memory[(self.index_register + 2) as usize] = (vx % 10 / 10) as u8;
+        self.memory[(self.index_register + 1) as usize] = ((vx % 100) / 10) as u8;
+        self.memory[(self.index_register + 2) as usize] = (vx % 10) as u8;
+
+        debug!(
+            "Fx33 ,{:X},{},{},{},{}",
+            t2,
+            vx,
+            (vx / 100) as u8,
+            (vx % 100 / 10) as u8,
+            (vx % 10 / 10) as u8
+        )
     }
 
     /// Fx55
@@ -613,7 +619,7 @@ impl Emulator {
     /// Store registers V0 through Vx in memory starting at location I.
     /// The interpreter copies the values of registers V0 through Vx into memory, starting at the address in I.
     fn inst_Fx55(&mut self, t2: u16) {
-        for register_iter in 0..t2 {
+        for register_iter in 0..=t2 {
             self.memory[(self.index_register + register_iter) as usize] =
                 self.registers[register_iter as usize] as u8
         }
@@ -625,9 +631,15 @@ impl Emulator {
     /// The interpreter reads values from memory starting at location I into registers V0 through Vx.
     /// opposite of Fx55
     fn inst_Fx65(&mut self, t2: u16) {
-        for register_iter in 0..t2 {
+        for register_iter in 0..=t2 {
             self.registers[register_iter as usize] =
-                self.memory[(self.index_register + register_iter) as usize] as u16
+                self.memory[(self.index_register + register_iter) as usize] as u16;
+            debug!(
+                "register {} registered as {}, memory location {}",
+                register_iter as usize,
+                self.memory[(self.index_register + register_iter) as usize] as u16,
+                (self.index_register + register_iter),
+            )
         }
     }
 }

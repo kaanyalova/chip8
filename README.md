@@ -1,4 +1,4 @@
-# Chip 8 Emulator written in rust 
+# Chip 8 Emulator 
 
 ## Usage 
 ```

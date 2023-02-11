@@ -1,5 +1,6 @@
 //mod bevy_;
 mod chip8;
+mod logger;
 mod sdl;
 
 use std::path::PathBuf;
@@ -26,6 +27,7 @@ struct Cli {
 }
 
 fn main() {
+    logger::init_logger();
     let args = Cli::parse();
 
     let rom = std::fs::read(args.path).unwrap();

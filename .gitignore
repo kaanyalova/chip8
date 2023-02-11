@@ -1,3 +1,5 @@
 /target
 *.ch8
+*.c8
+*.txt
 !roms/*

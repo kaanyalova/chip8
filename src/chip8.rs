@@ -9,7 +9,8 @@ pub struct Emulator {
     pub display_buffer: [[bool; 32]; 64], // first index is x, second is y
     pub key_inputs: [bool; 16],
     pub memory: [u8; 4096],
-    registers: [u16; 16], // stack
+    stack: [u16; 16],
+    registers: [u8; 16],
     sound_timer: u8,
     delay_timer: u8,
     index_register: u16, // cpu pointer thing
@@ -55,10 +56,11 @@ impl Emulator {
 
                 mem
             },
+            stack: [0; 16],
             registers: [0; 16],
             sound_timer: 0,
             delay_timer: 0,
-            index_register: 512,
+            index_register: 0,
             program_counter: 0x200,
             stack_pointer: 0,
             wait_for_key: false,
@@ -94,7 +96,6 @@ impl Emulator {
         let mut res = self.memory[self.program_counter as usize] as u16;
         res <<= 8;
         res = res | self.memory[self.program_counter as usize + 1] as u16;
-        self.program_counter += 2;
         res
     }
 
@@ -120,6 +121,14 @@ impl Emulator {
     ///
 
     pub fn execute(&mut self, opcode: u16) {
+        debug!(
+            "opcode 0x{:X}, pc is at {:X}, index register is {:X}, stack pointer on {}",
+            opcode,
+            self.program_counter,
+            self.index_register,
+            self.stack[self.stack_pointer as usize],
+        );
+
         let pieces = (
             (opcode & 0xF000) >> 12, // as u8 ?????
             (opcode & 0x0F00) >> 8,
@@ -168,10 +177,10 @@ impl Emulator {
                 opcode, self.program_counter
             ),
         };
-        debug!(
-            "opcode 0x{:X}, pc is at {}, index register is {}",
-            opcode, self.program_counter, self.index_register
-        );
+    }
+
+    fn next(&mut self) {
+        self.program_counter += 2;
     }
 }
 
@@ -183,6 +192,7 @@ impl Emulator {
     fn inst_00E0(&mut self) {
         self.display_buffer = [[false; 32]; 64];
         self.draw = true;
+        self.next();
     }
 
     /// 00EE
@@ -190,9 +200,8 @@ impl Emulator {
     /// Return from a subroutine.
     /// The interpreter sets the program counter to the address at the top of the stack, then subtracts 1 from the stack pointer.
     fn inst_00EE(&mut self) {
-        self.program_counter = self.registers[self.stack_pointer as usize];
         self.stack_pointer -= 1;
-        debug!("{}", self.stack_pointer);
+        self.program_counter = self.stack[self.stack_pointer as usize] as u16;
     }
 
     /// 1nnn
@@ -200,7 +209,7 @@ impl Emulator {
     /// Jump to location nnn.
     /// The interpreter sets the program counter to nnn.
     fn inst_1nnn(&mut self, op: u16) {
-        let nnn = op & 0xFFF;
+        let nnn = op & 0x0FFF;
         self.program_counter = nnn as u16;
     }
 
@@ -209,8 +218,9 @@ impl Emulator {
     /// Call subroutine at nnn.
     /// The interpreter increments the stack pointer, then puts the current PC on the top of the stack. The PC is then set to nnn.
     fn inst_2nnn(&mut self, op: u16) {
+        self.stack[self.stack_pointer as usize] = self.program_counter + 2;
+        //debug!("pc is {}", (self.program_counter + 2));
         self.stack_pointer += 1;
-        self.registers[self.stack_pointer as usize] = self.program_counter;
         self.inst_1nnn(op);
     }
 
@@ -221,9 +231,15 @@ impl Emulator {
     fn inst_3xkk(&mut self, t2: u16, t3: u16, t4: u16) {
         let mut kk = t3 << 4;
         kk |= t4;
-        if self.registers[t2 as usize] == kk {
+        if self.registers[t2 as usize] == kk as u8 {
             self.program_counter += 2;
         }
+        self.next();
+
+        //(
+        //    "k = {:X}, k = {:X}, kk = {:X}, register = {:X}",
+        //    t3, t4, kk, self.registers[t2 as usize]
+        //)
     }
 
     /// 4xkk
@@ -235,9 +251,10 @@ impl Emulator {
         let mut kk = t3 << 4;
         kk |= t4;
 
-        if self.registers[t2 as usize] != kk {
+        if self.registers[t2 as usize] != kk as u8 {
             self.program_counter += 2;
         }
+        self.next();
     }
 
     ///5xy0
@@ -248,6 +265,7 @@ impl Emulator {
         if self.registers[t2 as usize] == self.registers[t3 as usize] {
             self.program_counter += 2
         }
+        self.next();
     }
 
     /// 6xkk
@@ -257,9 +275,11 @@ impl Emulator {
     fn inst_6xkk(&mut self, t2: u16, t3: u16, t4: u16) {
         let mut kk = t3 << 4;
         kk |= t4;
-        self.registers[t2 as usize] = kk;
+        self.registers[t2 as usize] = kk as u8;
 
-        debug!("{},{}, {}", t3, t4, kk)
+        self.next();
+
+        //debug!("{:X},{:X}, {:X}", t3, t4, kk)
     }
 
     /// 7xkk
@@ -269,7 +289,10 @@ impl Emulator {
     fn inst_7xkk(&mut self, t2: u16, t3: u16, t4: u16) {
         let mut kk = t3 << 4;
         kk |= t4;
-        self.registers[t2 as usize] = kk.wrapping_add(self.registers[t2 as usize]);
+
+        self.registers[t2 as usize] = (kk as u8).wrapping_add(self.registers[t2 as usize]);
+        //debug!("{},{}, {}, {}", t3, t4, kk, self.registers[t2 as usize]);
+        self.next();
     }
 
     /// 8xy0
@@ -277,7 +300,8 @@ impl Emulator {
     /// Set Vx = Vy.
     /// Stores the value of register Vy in register Vx.
     fn inst_8xy0(&mut self, t2: u16, t3: u16) {
-        self.registers[t2 as usize] = self.registers[t3 as usize].clone() // .clone() because rust
+        self.registers[t2 as usize] = self.registers[t3 as usize].clone(); // .clone() because rust
+        self.next();
     }
 
     /// 8xy1
@@ -286,6 +310,7 @@ impl Emulator {
     /// Performs a bitwise OR on the values of Vx and Vy, then stores the result in Vx. A bitwise OR compares the corresponding bits from two values, and if either bit is 1, then the same bit in the result is also 1. Otherwise, it is 0.
     fn inst_8xy1(&mut self, t2: u16, t3: u16) {
         self.registers[t2 as usize] = self.registers[t2 as usize] | self.registers[t3 as usize];
+        self.next();
     }
 
     /// 8xy2
@@ -294,6 +319,7 @@ impl Emulator {
     /// Performs a bitwise AND on the values of Vx and Vy, then stores the result in Vx. A bitwise AND compares the corresponding bits from two values, and if both bits are 1, then the same bit in the result is also 1. Otherwise, it is 0.
     fn inst_8xy2(&mut self, t2: u16, t3: u16) {
         self.registers[t2 as usize] = self.registers[t2 as usize] & self.registers[t3 as usize];
+        self.next();
     }
 
     /// 8xy3
@@ -302,6 +328,7 @@ impl Emulator {
     /// Performs a bitwise exclusive OR on the values of Vx and Vy, then stores the result in Vx. An exclusive OR compares the corresponding bits from two values, and if the bits are not both the same, then the corresponding bit in the result is set to 1. Otherwise, it is 0.
     fn inst_8xy3(&mut self, t2: u16, t3: u16) {
         self.registers[t2 as usize] = self.registers[t2 as usize] ^ self.registers[t3 as usize];
+        self.next();
     }
 
     /// 8xy4
@@ -309,25 +336,24 @@ impl Emulator {
     /// Set Vx = Vx + Vy, set VF = carry.
     /// The values of Vx and Vy are added together. If the result is greater than 8 bits (i.e., > 255,) VF is set to 1, otherwise 0. Only the lowest 8 bits of the result are kept, and stored in Vx.
     fn inst_8xy4(&mut self, t2: u16, t3: u16) {
-        let mut sum = t2 + t3;
+        let sum: u16 = self.registers[t2 as usize] as u16 + self.registers[t3 as usize] as u16;
         if sum > 255 {
             self.registers[0xF] = 1; // 0xF = 15
                                      //
                                      // sum
                                      //
                                      // 0000 0001 0000 1110
-                                     // 0000 0000 0000 0000
-                                     // |
+                                     // 0000 0000 1111 1111
+                                     // &
                                      // ---------------------
-                                     // 0000 0001 0000 1110
-
-            sum |= 0x0000;
-            sum <<= 8;
+                                     // 0000 0000 1111 1110
         } else {
             self.registers[0xF] = 0;
         }
 
-        self.registers[t2 as usize] = sum;
+        self.registers[t2 as usize] = (sum & 0x00FF) as u8;
+
+        self.next();
     }
 
     /// 8xy5
@@ -342,6 +368,8 @@ impl Emulator {
         }
         (self.registers[t2 as usize], _) =
             self.registers[t2 as usize].overflowing_sub(self.registers[t3 as usize]);
+
+        self.next();
     }
 
     /// 8xy6  
@@ -368,6 +396,7 @@ impl Emulator {
             self.registers[0xF] = 0
         }
         self.registers[t2 as usize] /= 2;
+        self.next();
     }
 
     /// 8xy7
@@ -383,6 +412,7 @@ impl Emulator {
 
         (self.registers[t2 as usize], _) =
             self.registers[t2 as usize].overflowing_sub(self.registers[t3 as usize]);
+        self.next();
     }
 
     /// 8xyE
@@ -390,13 +420,14 @@ impl Emulator {
     /// Set Vx = Vx SHL 1.
     /// If the most-significant bit of Vx is 1, then VF is set to 1, otherwise to 0. Then Vx is multiplied by 2.
     fn inst_8xyE(&mut self, t2: u16) {
-        if ((self.registers[t2 as usize] >> 15) & 1) == 1 {
+        if ((self.registers[t2 as usize] >> 7) & 0b10000000) == 1 {
             // similar to 8xy6
             self.registers[0xF] = 1
         } else {
             self.registers[0xF] = 0
         }
-        self.registers[t2 as usize] *= 2
+        (self.registers[t2 as usize], _) = self.registers[t2 as usize].overflowing_mul(2);
+        self.next();
     }
 
     /// 9xy0
@@ -407,6 +438,7 @@ impl Emulator {
         if self.registers[t2 as usize] != self.registers[t3 as usize] {
             self.program_counter += 2
         }
+        self.next();
     }
 
     /// Annn    
@@ -419,7 +451,8 @@ impl Emulator {
         nnn |= t3 << 4;
         nnn |= t4;
         self.index_register = nnn;
-        debug!("{:X},{:X},{:X},{:X}", t2, t3, t4, nnn)
+        self.next();
+        //debug!("{:X},{:X},{:X},{:X}", t2, t3, t4, nnn)
     }
 
     /// Bnnn
@@ -431,7 +464,8 @@ impl Emulator {
         bin |= t2 << 8;
         bin |= t3 << 4;
         bin |= t4;
-        self.program_counter = bin + self.registers[0]
+        self.program_counter = bin + self.registers[0] as u16;
+        self.next();
     }
 
     /// Cxkk - RND Vx, byte
@@ -442,7 +476,8 @@ impl Emulator {
         let mut kk = t3 << 4;
         kk |= t4;
         let rand: u8 = random();
-        self.registers[t2 as usize] = kk & rand as u16;
+        self.registers[t2 as usize] = kk as u8 & rand;
+        self.next();
     }
 
     /// Dxyn
@@ -486,9 +521,9 @@ impl Emulator {
         for sprite_byte_iter in 0..t4 {
             let sprite = self.memory[(self.index_register + sprite_byte_iter) as usize]; // sprite byte
             let x_pos = self.registers[t2 as usize]; // actual x position
-            let y_pos = (self.registers[t3 as usize] + sprite_byte_iter) % 32; // actual y position
-                                                                               // sprite_byte_iter added to get the y position of the spites to draw
-                                                                               // second sprite needs to start at y+1 third needs to start at y+2 etc.
+            let y_pos = (self.registers[t3 as usize] + sprite_byte_iter as u8) % 32; // actual y position
+                                                                                     // sprite_byte_iter added to get the y position of the spites to draw
+                                                                                     // second sprite needs to start at y+1 third needs to start at y+2 etc.
 
             // iterate over each bit of the sprite
             // could & with 1000 0000 then << n to get bits instead...
@@ -505,8 +540,9 @@ impl Emulator {
         }
 
         // set vf to if changed
-        self.registers[0xF] = is_changed as u16;
+        self.registers[0xF] = is_changed as u8;
         self.draw = is_changed;
+        self.next();
     }
 
     /// Ex9E
@@ -517,6 +553,7 @@ impl Emulator {
         if self.key_inputs[self.registers[t2 as usize] as usize] {
             self.program_counter += 2;
         }
+        self.next();
     }
 
     /// ExA1
@@ -529,6 +566,7 @@ impl Emulator {
         if !self.key_inputs[self.registers[t2 as usize] as usize] {
             self.program_counter += 2;
         }
+        self.next();
     }
 
     /// Fx07
@@ -536,7 +574,8 @@ impl Emulator {
     /// Set Vx = delay timer value.
     /// The value of DT is placed into Vx.
     fn inst_Fx07(&mut self, t2: u16) {
-        self.registers[t2 as usize] = self.delay_timer as u16
+        self.registers[t2 as usize] = self.delay_timer as u8;
+        self.next();
     }
 
     // Fx0A
@@ -548,15 +587,15 @@ impl Emulator {
         if self.wait_for_key == true {
             for (key_index, key_is_pressed) in self.key_inputs.iter().enumerate() {
                 if *key_is_pressed {
-                    self.registers[t2 as usize] = key_index as u16;
+                    self.registers[t2 as usize] = key_index as u8;
                     self.wait_for_key = false;
-                    return; // this should only get the "first" indexed key ? This should be return or break ?
+                    break; // this should only get the "first" indexed key ? This should be return or break ?
                 }
             }
         }
 
-        if self.wait_for_key {
-            self.program_counter -= 2;
+        if !self.wait_for_key {
+            self.next();
         }
     }
 
@@ -566,6 +605,7 @@ impl Emulator {
     /// DT is set equal to the value of Vx.
     fn inst_Fx15(&mut self, t2: u16) {
         self.delay_timer = self.registers[t2 as usize] as u8;
+        self.next();
     }
 
     /// Fx18
@@ -574,6 +614,7 @@ impl Emulator {
     /// ST is set equal to the value of Vx.
     fn inst_Fx18(&mut self, t2: u16) {
         self.sound_timer = self.registers[t2 as usize] as u8;
+        self.next();
     }
 
     /// Fx1E
@@ -581,9 +622,10 @@ impl Emulator {
     /// Set I = I + Vx.
     /// The values of I and Vx are added, and the results are stored in I.
     fn inst_Fx1E(&mut self, t2: u16) {
-        (self.index_register, _) = self
+        self.index_register = self
             .index_register
-            .overflowing_add(self.registers[t2 as usize])
+            .wrapping_add((self.registers[t2 as usize]) as u16);
+        self.next();
     }
 
     /// Fx29
@@ -591,7 +633,8 @@ impl Emulator {
     /// Set I = location of sprite for digit Vx.
     /// The value of I is set to the location for the hexadecimal sprite corresponding to the value of Vx. See section 2.4, Display, for more information on the Chip-8 hexadecimal font.
     fn inst_Fx29(&mut self, t2: u16) {
-        self.index_register = self.registers[t2 as usize] * 5 // each sprite is 5 bytes
+        self.index_register = self.registers[t2 as usize] as u16 * 5; // each sprite is 5 bytes
+        self.next();
     }
 
     /// Fx33
@@ -603,15 +646,15 @@ impl Emulator {
         self.memory[self.index_register as usize] = (vx / 100) as u8;
         self.memory[(self.index_register + 1) as usize] = ((vx % 100) / 10) as u8;
         self.memory[(self.index_register + 2) as usize] = (vx % 10) as u8;
-
-        debug!(
-            "Fx33 ,{:X},{},{},{},{}",
-            t2,
-            vx,
-            (vx / 100) as u8,
-            (vx % 100 / 10) as u8,
-            (vx % 10 / 10) as u8
-        )
+        self.next();
+        //debug!(
+        //    "Fx33 ,{:X},{},{},{},{}",
+        //    t2,
+        //    vx,
+        //    (vx / 100) as u8,
+        //    (vx % 100 / 10) as u8,
+        //    (vx % 10 / 10) as u8
+        //)
     }
 
     /// Fx55
@@ -623,6 +666,7 @@ impl Emulator {
             self.memory[(self.index_register + register_iter) as usize] =
                 self.registers[register_iter as usize] as u8
         }
+        self.next();
     }
 
     /// Fx65
@@ -633,13 +677,16 @@ impl Emulator {
     fn inst_Fx65(&mut self, t2: u16) {
         for register_iter in 0..=t2 {
             self.registers[register_iter as usize] =
-                self.memory[(self.index_register + register_iter) as usize] as u16;
+                self.memory[(self.index_register + register_iter) as usize] as u8;
+
             debug!(
-                "register {} registered as {}, memory location {}",
+                "{} registers to register ,register {} registered as {}, memory location {}",
+                t2 + 1,
                 register_iter as usize,
                 self.memory[(self.index_register + register_iter) as usize] as u16,
                 (self.index_register + register_iter),
             )
         }
+        self.next();
     }
 }

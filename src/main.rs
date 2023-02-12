@@ -29,7 +29,6 @@ struct Cli {
 fn main() {
     logger::init_logger();
     let args = Cli::parse();
-
     let rom = std::fs::read(args.path).unwrap();
     let mut ch8 = chip8::Emulator::init(rom);
     sdl::sdl_init(&mut ch8, args.speed, args.screen_size, args.framerate);

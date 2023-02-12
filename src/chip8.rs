@@ -529,7 +529,7 @@ impl Emulator {
             // could & with 1000 0000 then << n to get bits instead...
             for bit_iter in 0..8 {
                 let bit = (sprite << bit_iter) & 0x80 != 0; // "!= 0" is same as "as bool"
-                let x_pos = (x_pos + bit_iter) % 64;
+                let x_pos = (x_pos.wrapping_add(bit_iter)) % 64;
                 self.display_buffer[x_pos as usize]  // %64 again 
                     [y_pos as usize] ^= bit; // xor the bits to display buffer
                 if bit != self.display_buffer[x_pos as usize][y_pos as usize] {

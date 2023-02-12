@@ -589,7 +589,6 @@ impl Emulator {
                 if *key_is_pressed {
                     self.registers[t2 as usize] = key_index as u8;
                     self.wait_for_key = false;
-                    break; // this should only get the "first" indexed key ? This should be return or break ?
                 }
             }
         }

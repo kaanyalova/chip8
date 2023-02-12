@@ -6,8 +6,14 @@ use sdl2::rect::Rect;
 use std::collections::HashSet;
 
 use crate::chip8::Emulator;
+use crate::sound::*;
 
 pub fn sdl_init(ch8: &mut Emulator, speed: u32, screen_size: u32, framerate: u32) {
+    // Sound
+    let (_stream, stream_handle) = rodio::OutputStream::try_default().unwrap();
+    let sink = setup_beep(stream_handle);
+
+    // Video
     let sdl_context = sdl2::init().unwrap();
 
     let video_subsystem = sdl_context.video().unwrap();
@@ -33,6 +39,14 @@ pub fn sdl_init(ch8: &mut Emulator, speed: u32, screen_size: u32, framerate: u32
                 Event::Quit { .. } => break 'running,
                 _ => {}
             }
+        }
+
+        if ch8.sound_timer != 0 {
+            start_beep(&sink);
+        }
+
+        if ch8.sound_timer == 0 {
+            stop_beep(&sink);
         }
 
         // set all keys to false at the start of the frame

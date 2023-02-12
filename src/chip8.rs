@@ -11,7 +11,7 @@ pub struct Emulator {
     pub memory: [u8; 4096],
     stack: [u16; 16],
     registers: [u8; 16],
-    sound_timer: u8,
+    pub sound_timer: u8,
     delay_timer: u8,
     index_register: u16, // cpu pointer thing
     program_counter: u16,

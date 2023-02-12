@@ -1,7 +1,7 @@
-//mod bevy_;
 mod chip8;
 mod logger;
 mod sdl;
+mod sound;
 
 use std::path::PathBuf;
 

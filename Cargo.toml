@@ -15,5 +15,6 @@ keywords = ["chip8", "emulator"]
 clap = { version = "4.1.4", features = ["derive"] }
 log = { version = "0.4.17", features = ["max_level_debug", "release_max_level_off"] }
 rand = "0.8.5"
+rodio = "0.16.0"
 sdl2 = { version = "0.35.2", features = ["gfx"] }
 simplelog = "0.12.0"

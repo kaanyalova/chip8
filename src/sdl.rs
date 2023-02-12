@@ -62,21 +62,21 @@ pub fn sdl_init(ch8: &mut Emulator, speed: u32, screen_size: u32, framerate: u32
 
         for key in keys {
             match key {
-                Keycode::Num1 => ch8.key_inputs[0] = true,
-                Keycode::Num2 => ch8.key_inputs[1] = true,
-                Keycode::Num3 => ch8.key_inputs[2] = true,
-                Keycode::Num4 => ch8.key_inputs[3] = true,
+                Keycode::X => ch8.key_inputs[0] = true,
+                Keycode::Num1 => ch8.key_inputs[1] = true,
+                Keycode::Num2 => ch8.key_inputs[2] = true,
+                Keycode::Num3 => ch8.key_inputs[3] = true,
                 Keycode::Q => ch8.key_inputs[4] = true,
                 Keycode::W => ch8.key_inputs[5] = true,
                 Keycode::E => ch8.key_inputs[6] = true,
-                Keycode::R => ch8.key_inputs[7] = true,
-                Keycode::A => ch8.key_inputs[8] = true,
-                Keycode::S => ch8.key_inputs[9] = true,
-                Keycode::D => ch8.key_inputs[10] = true,
-                Keycode::F => ch8.key_inputs[11] = true,
-                Keycode::Z => ch8.key_inputs[12] = true,
-                Keycode::X => ch8.key_inputs[13] = true,
-                Keycode::C => ch8.key_inputs[14] = true,
+                Keycode::A => ch8.key_inputs[7] = true,
+                Keycode::S => ch8.key_inputs[8] = true,
+                Keycode::D => ch8.key_inputs[9] = true,
+                Keycode::Z => ch8.key_inputs[10] = true,
+                Keycode::C => ch8.key_inputs[11] = true,
+                Keycode::Num4 => ch8.key_inputs[12] = true,
+                Keycode::R => ch8.key_inputs[13] = true,
+                Keycode::F => ch8.key_inputs[14] = true,
                 Keycode::V => ch8.key_inputs[15] = true,
 
                 _ => {}

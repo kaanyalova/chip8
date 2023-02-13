@@ -25,7 +25,7 @@ Options:
   
   
   ## Used resources 
-  [Cowgod's Technical Reference](http://devernay.free.fr/hacks/chip8/C8TECH10.HTM)
-  [tobiasvl's Blog Post](https://tobiasvl.github.io/blog/write-a-chip-8-emulator/)
-  [corax89's Test rom](https://github.com/corax89/chip8-test-rom)
+  [Cowgod's Technical Reference](http://devernay.free.fr/hacks/chip8/C8TECH10.HTM)  
+  [tobiasvl's Blog Post](https://tobiasvl.github.io/blog/write-a-chip-8-emulator/)  
+  [corax89's Test rom](https://github.com/corax89/chip8-test-rom)  
   

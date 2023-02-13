@@ -1,13 +1,13 @@
-# Chip 8 Emulator 
+# Chip 8 Emulator
+
+![](assets/images/screenshot.png)
+
+
 
 A chip8 emulator written in rust.
 
+## Usage
 
-
-
-
-
-## Usage 
 ```
 Usage: chip8 [OPTIONS] <PATH>
 
@@ -20,12 +20,10 @@ Options:
   -f, --framerate <FRAMERATE>      Framerate [default: 240]
   -h, --help                       Print help
   -V, --version                    Print version
-  ```
-  
-  
-  
-  ## Used resources 
+```
+
+## Used resources
+
   [Cowgod's Technical Reference](http://devernay.free.fr/hacks/chip8/C8TECH10.HTM)  
   [tobiasvl's Blog Post](https://tobiasvl.github.io/blog/write-a-chip-8-emulator/)  
   [corax89's Test rom](https://github.com/corax89/chip8-test-rom)  
-  
